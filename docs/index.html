@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SortRight: which bin?</title>
+<meta name="description" content="Point your phone at an item and see which recycling bin it belongs in. Runs on your phone; no photo is uploaded.">
+<style>
+:root{--bg:#fafaf7;--card:#fff;--ink:#16202a;--mute:#55606b;--line:#dfe3e6;--accent:#0b6e4f;--warn:#8a4b00;--warnbg:#fff4e0}
+@media (prefers-color-scheme:dark){:root{--bg:#10151a;--card:#1a222a;--ink:#eef2f5;--mute:#a4afba;--line:#2c3742;--accent:#5fd3a6;--warn:#ffcf8a;--warnbg:#3a2a10}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:1.35rem;margin:0}main{max-width:620px;margin:0 auto;padding:0 16px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+button,.btn{font:inherit;border:0;border-radius:12px;padding:14px 18px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;min-height:52px}
+@media (prefers-color-scheme:dark){button,.btn{color:#08130f}}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1 1 150px}
+canvas,video{width:100%;border-radius:12px;background:#000;display:block}
+.result{display:flex;gap:14px;align-items:center}.chip{width:76px;height:76px;border-radius:14px;border:3px solid var(--ink);flex:none;display:flex;align-items:center;justify-content:center;font-size:2rem}
+.big{font-size:1.5rem;font-weight:700;margin:0}.mute{color:var(--mute);font-size:.92rem}
+.bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin:4px 0 10px}.bar>i{display:block;height:100%;background:var(--accent)}
+.unsure{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:12px;font-weight:600}
+nav{display:flex;gap:6px}nav button{padding:8px 12px;min-height:44px;font-size:.95rem}
+table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;border-bottom:1px solid var(--line)}input[type=color]{width:56px;height:44px;border:0;background:none}
+input[type=text]{font:inherit;width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.hidden{display:none}details summary{cursor:pointer;font-weight:600}
+</style>
+</head>
+<body>
+<header><h1>SortRight</h1>
+<nav><button class="ghost" data-tab="scan">Scan</button><button class="ghost" data-tab="settings">Bins</button><button class="ghost" data-tab="help">Help</button></nav></header>
+<main>
+<section id="scan">
+  <div class="card">
+    <p class="mute" style="margin-top:0">Point at one item. Your photo stays on this phone; nothing is uploaded.</p>
+    <video id="video" playsinline muted class="hidden"></video>
+    <canvas id="canvas" class="hidden"></canvas>
+    <div class="row" style="margin-top:10px">
+      <button id="camBtn">Use camera</button>
+      <button id="snapBtn" class="hidden">Take photo</button>
+      <label class="btn ghost" style="text-align:center;display:inline-block;line-height:24px">Choose a photo<input id="file" type="file" accept="image/*" hidden></label>
+    </div>
+    <p class="mute" id="status" aria-live="polite">Loading the model…</p>
+  </div>
+  <div id="out" class="card hidden" aria-live="polite"></div>
+</section>
+<section id="settings" class="hidden">
+  <div class="card"><p class="big">Your local bin colours</p>
+    <p class="mute">Recycling rules differ between cities. Set the names and colours used where you are. The default colours are colour-blind-safe, and the bin name is always shown in words.</p>
+    <table id="binTable"></table><div class="row" style="margin-top:12px"><button id="resetBins" class="ghost">Reset defaults</button></div></div>
+</section>
+<section id="help" class="hidden">
+  <div class="card"><p class="big">How it works</p>
+    <p>SortRight looks at one item and suggests the material and the bin. It runs entirely in your browser, so photos never leave your phone.</p>
+    <p><b>When it says "not sure"</b>, do not guess. Check your local recycling guide or ask staff. It is built to say so when the photo is unclear, the item is dirty or mixed, or it is not a type it knows.</p>
+    <p><b>Tips:</b> one item per photo, item in the middle, good light, close enough to fill about half the picture.</p>
+    <details><summary>Limits</summary><p class="mute">This is an indicative assistant, not an official rule. Dirty or greasy items, mixed materials, clear plastic film, cartons and electronics are often misjudged. Rules differ by city: edit the bin names on the Bins tab.</p></details>
+    <details><summary>About the model</summary><p class="mute" id="about"></p></details>
+  </div>
+</section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const MATERIALS=["plastic","paper","cardboard","glass","metal","organic","general_waste","other"];
+const LABEL={plastic:"Plastic",paper:"Paper",cardboard:"Cardboard",glass:"Glass",metal:"Metal",organic:"Food / organic",general_waste:"General waste",other:"Other / special"};
+const REASON={plastic:"Looks like a plastic bottle, cup or container. Empty it first.",paper:"Looks like clean paper. Keep it dry and free of food.",cardboard:"Looks like cardboard. Flatten it; greasy parts do not recycle.",glass:"Looks like glass. Empty and do not break it.",metal:"Looks like a can, tin or foil. Empty it first.",organic:"Looks like food or plant waste.",general_waste:"Looks like mixed or soft packaging, foam or dirty waste.",other:"Looks like something special (battery, cable, clothing). Check the local guide."};
+const ICON={plastic:"🧴",paper:"📄",cardboard:"📦",glass:"🍾",metal:"🥫",organic:"🍌",general_waste:"🗑️",other:"⚠️"};
+const DEFAULT_BINS={plastic:{name:"Plastic bin",color:"#E69F00"},paper:{name:"Paper bin",color:"#0072B2"},cardboard:{name:"Cardboard bin",color:"#56B4E9"},glass:{name:"Glass bin",color:"#009E73"},metal:{name:"Metal bin",color:"#F0E442"},organic:{name:"Food waste bin",color:"#8B5A2B"},general_waste:{name:"General waste bin",color:"#7a7a7a"},other:{name:"Ask staff / local guide",color:"#222222"}};
+let bins=load();let cfg={threshold:0.6,classes:MATERIALS,mean:[0.485,0.456,0.406],std:[0.229,0.224,0.225],size:224,resize:256,model:"model/sortright.onnx",about:""};let session=null;
+function load(){try{const s=localStorage.getItem("bins");if(s)return {...DEFAULT_BINS,...JSON.parse(s)}}catch(e){}return JSON.parse(JSON.stringify(DEFAULT_BINS))}
+function save(){try{localStorage.setItem("bins",JSON.stringify(bins))}catch(e){}}
+function tab(n){["scan","settings","help"].forEach(t=>$("#"+t).classList.toggle("hidden",t!==n))}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+function renderBins(){const t=$("#binTable");t.innerHTML="<tr><th>Material</th><th>Bin name</th><th>Colour</th></tr>";MATERIALS.forEach(m=>{const r=document.createElement("tr");r.innerHTML=`<td>${ICON[m]} ${LABEL[m]}</td><td><input type="text" value="${bins[m].name}" aria-label="${LABEL[m]} bin name"></td><td><input type="color" value="${bins[m].color}" aria-label="${LABEL[m]} bin colour"></td>`;const [n,c]=r.querySelectorAll("input");n.onchange=()=>{bins[m].name=n.value;save()};c.onchange=()=>{bins[m].color=c.value;save()};t.appendChild(r)})}
+$("#resetBins").onclick=()=>{bins=JSON.parse(JSON.stringify(DEFAULT_BINS));save();renderBins()};
+async function init(){try{cfg={...cfg,...await (await fetch("model/config.json")).json()}}catch(e){}
+ $("#about").textContent=cfg.about||"";
+ try{ort.env.wasm.numThreads=1;session=await ort.InferenceSession.create(cfg.model,{executionProviders:["wasm"]});$("#status").textContent="Ready. Take or choose a photo.";}catch(e){$("#status").textContent="Could not load the model: "+e.message}}
+function prep(img){const S=cfg.size,R=cfg.resize,c=document.createElement("canvas");c.width=c.height=S;const x=c.getContext("2d");const k=R/Math.min(img.width,img.height),w=img.width*k,h=img.height*k;x.drawImage(img,(S-w)/2,(S-h)/2,w,h);const d=x.getImageData(0,0,S,S).data,t=new Float32Array(3*S*S);for(let i=0;i<S*S;i++)for(let ch=0;ch<3;ch++)t[ch*S*S+i]=(d[i*4+ch]/255-cfg.mean[ch])/cfg.std[ch];return new ort.Tensor("float32",t,[1,3,S,S])}
+function softmax(a){const m=Math.max(...a),e=a.map(v=>Math.exp(v-m)),s=e.reduce((p,q)=>p+q,0);return e.map(v=>v/s)}
+async function classify(img){if(!session)return;const cv=$("#canvas");cv.width=Math.min(img.width,640);cv.height=cv.width*img.height/img.width;cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);cv.classList.remove("hidden");
+ $("#status").textContent="Thinking…";const t0=performance.now();const out=await session.run({[session.inputNames[0]]:prep(img)});const p=softmax(Array.from(out[session.outputNames[0]].data));const ms=Math.round(performance.now()-t0);
+ const order=p.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).slice(0,3);const [top,ti]=order[0];const m=cfg.classes[ti];const o=$("#out");o.classList.remove("hidden");
+ const unsure=top<cfg.threshold||m==="other";
+ let html="";
+ if(unsure){html+=`<div class="unsure">I am not sure about this one. Please check your local recycling guide or ask staff.</div><p class="mute">Closest guess: ${LABEL[m]} (${Math.round(top*100)}%)</p>`}
+ else{const b=bins[m];html+=`<div class="result"><div class="chip" style="background:${b.color}" aria-hidden="true">${ICON[m]}</div><div><p class="big">${LABEL[m]} → ${b.name}</p><p class="mute" style="margin:0">${REASON[m]}</p></div></div>`}
+ html+="<p class='mute' style='margin-bottom:2px'>Other possibilities</p>"+order.map(([v,i])=>`<div>${LABEL[cfg.classes[i]]} ${Math.round(v*100)}%<div class="bar"><i style="width:${Math.round(v*100)}%"></i></div></div>`).join("")+`<p class="mute">Indicative only. Rules differ by city. ${ms} ms on this device.</p>`;o.innerHTML=html;$("#status").textContent="Done."}
+function fromFile(f){const im=new Image();im.onload=()=>{classify(im);URL.revokeObjectURL(im.src)};im.src=URL.createObjectURL(f)}
+$("#file").onchange=e=>{if(e.target.files[0])fromFile(e.target.files[0])};
+let stream=null;$("#camBtn").onclick=async()=>{try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});const v=$("#video");v.srcObject=stream;v.classList.remove("hidden");await v.play();$("#snapBtn").classList.remove("hidden");$("#camBtn").classList.add("hidden")}catch(e){$("#status").textContent="Camera not available. Use Choose a photo instead."}};
+$("#snapBtn").onclick=()=>{const v=$("#video"),c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);classify(c)};
+renderBins();init();
+</script>
+</body>
+</html>

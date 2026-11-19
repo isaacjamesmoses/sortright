@@ -1,0 +1,16 @@
+# training / evaluation (python 3.12-3.14)
+torch>=2.4
+torchvision>=0.19
+numpy
+pillow
+scikit-learn
+matplotlib
+requests
+opencv-python
+diffusers
+transformers
+accelerate
+open_clip_torch
+# ONNX export and quantisation
+onnx
+onnxruntime
