@@ -1,6 +1,6 @@
 ﻿"""Build the final presentation deck (12 slides) with speaker notes (python-pptx).
 Numbers come from results/*.json and results/summary.md (same sources as the report); images from deck_assets/.
-usage: python tools/build_deck_pro.py  -> SortRight_Final_Presentation_PRO_v4.pptx"""
+usage: python tools/build_deck_pro.py  -> SortRight_Final_Presentation_PRO_v6.pptx"""
 from pathlib import Path
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -173,17 +173,26 @@ s = new_slide(1, dark=True, notes=(
 dots(s, 0.8, 0.9, d=0.24, gap=0.1, dark=True)
 text(s, 0.8, 1.45, 7.0, 1.3, "SortRight", size=72, bold=True, font=HEAD, color=WHITE)
 text(s, 0.8, 2.75, 7.0, 0.6, "Point. Snap. Sort.", size=30, bold=True, color=AMBER)
-text(s, 0.8, 3.55, 6.6, 1.3, "A phone web app that names the material, the bin and an honest “not sure”, "
+text(s, 0.8, 3.45, 5.6, 1.3, "A phone web app that names the material, the bin and an honest “not sure”, "
      "running entirely on the device.", size=20, color=SOFT, line=1.1)
-text(s, 0.8, 5.0, 6.8, 1.2, [[("Isaac James", {"bold": True, "size": 20, "color": WHITE})],
-                              "MAIB AI 221 Computer Vision with Applications  ·  Final Project 8, Environment",
-                              "Unit coordinator: Dr. Khalid Ezzeldeen  ·  S P Jain"], size=14, color=SOFT, space_after=3)
+text(s, 0.8, 4.85, 5.6, 1.3, [[("Isaac James", {"bold": True, "size": 20, "color": WHITE})],
+                              "MAIB AI 221 Computer Vision with Applications",
+                              "Final Project 8, Environment",
+                              "Unit coordinator: Dr. Khalid Ezzeldeen  ·  S P Jain"], size=14, color=SOFT, space_after=2)
 b = box(s, 0.8, 6.3, 5.4, 0.55, "145A45", radius=0.5)
-text(s, 0.8, 6.3, 5.4, 0.55, [[("Live:  ", {"color": SOFT}), ("isaacjamesmoses.github.io/sortright",
-                                                              {"bold": True, "color": WHITE})]],
-     size=16, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-pic(s, "phone_cardboard.png", 7.95, 0.95, h=6.1)
-pic(s, "phone_unsure.png", 10.55, 0.45, h=6.1)
+b.click_action.hyperlink.address = URL
+lt = text(s, 0.8, 6.3, 5.4, 0.55, [[("Live:  ", {"color": SOFT}), ("isaacjamesmoses.github.io/sortright",
+                                                                  {"bold": True, "color": WHITE})]],
+          size=16, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+lt.click_action.hyperlink.address = URL
+qc = box(s, 6.75, 1.25, 3.3, 5.2, WHITE, radius=0.05)
+qc.click_action.hyperlink.address = URL
+text(s, 6.95, 1.45, 2.9, 0.4, "TRY IT NOW", size=13, bold=True, color=GREEN, align=PP_ALIGN.CENTER)
+text(s, 6.95, 1.85, 2.9, 0.9, "Scan with your phone", size=24, bold=True, font=HEAD, color=INK, align=PP_ALIGN.CENTER, line=0.95)
+qp = pic(s, "qr.png", 7.1, 2.85, w=2.6)
+qp.click_action.hyperlink.address = URL
+text(s, 6.95, 5.6, 2.9, 0.7, "No install, no account. Nothing is uploaded.", size=14, color=MUTE, align=PP_ALIGN.CENTER, line=1.0)
+pic(s, "phone_cardboard.png", 10.3, 0.75, h=6.0)
 
 # ---------------------------------------------------------------- 2 problem
 s = new_slide(2, "A wrong bin costs more than a missing answer", notes=(
@@ -259,6 +268,13 @@ for i, (img, h, d) in enumerate(caps):
     pic(s, img, x + (2.9 - 4.1 * 912 / 2172) / 2, 1.6, h=4.1)
     text(s, x, 5.85, 2.9, 0.35, h, size=17, bold=True, font=HEAD, align=PP_ALIGN.CENTER)
     text(s, x, 6.22, 2.9, 0.7, d, size=14, color=MUTE, line=1.0, align=PP_ALIGN.CENTER)
+for label, link, x0, w0, fill, col in [("Open demo gallery", URL + "demo.html", 7.15, 3.35, GREEN, WHITE),
+                                       ("Open the app", URL, 10.65, 2.08, AMBER, INK)]:
+    pill = box(s, x0, 1.04, w0, 0.46, fill, radius=0.5)
+    pill.click_action.hyperlink.address = link
+    pt = text(s, x0, 1.04, w0, 0.46, label + "  ▸", size=16, bold=True, color=col, align=PP_ALIGN.CENTER,
+              anchor=MSO_ANCHOR.MIDDLE)
+    pt.click_action.hyperlink.address = link
 
 # ---------------------------------------------------------------- 5 data
 s = new_slide(5, "Data: studio, real-world and generated images", "Three training sources, two independent test sets, licences recorded.", notes=(
@@ -559,9 +575,10 @@ NL = chr(10)
 parts = ["# SortRight: simple speaking script"] + [f"## Slide {i}{NL}{NOTES[i]}" for i in range(1, 14)]
 open(ROOT / "SPEAKING_SCRIPT_SIMPLE.md", "w", encoding="utf-8").write((NL + NL).join(parts) + NL)
 
-out = ROOT / "SortRight_Final_Presentation_PRO_v4.pptx"
+out = ROOT / "SortRight_Final_Presentation_PRO_v6.pptx"
 prs.save(out)
 print("saved", out)
+
 
 
 

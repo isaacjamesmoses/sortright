@@ -4,7 +4,9 @@ NOTES = {
 
 You take a photo of an item with your phone. The app tells you the material and which bin to use. If it is not sure, it says so.
 
-It runs on the phone, and no photo is uploaded. It is live now, and I will show you.""",
+It runs on the phone, and no photo is uploaded.
+
+Please scan the QR code on the screen and open the app on your phone. You can try it while I talk.""",
 2: """People often put items in the wrong bin. This makes recycling dirty and costs money.
 
 The user is a person at a campus recycling bin with a phone.
