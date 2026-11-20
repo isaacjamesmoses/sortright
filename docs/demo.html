@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SortRight: demo gallery</title>
+<meta name="description" content="Click a photo and watch SortRight name the material and the bin. Runs in your browser; nothing is uploaded.">
+<style>
+:root{--bg:#fafaf7;--card:#fff;--ink:#10231c;--mute:#4f5f58;--line:#dfe3e6;--accent:#0b6e4f;--warn:#8a4b00;--warnbg:#fff4e0}
+@media (prefers-color-scheme:dark){:root{--bg:#10151a;--card:#1a222a;--ink:#eef2f5;--mute:#a4afba;--line:#2c3742;--accent:#5fd3a6;--warn:#ffcf8a;--warnbg:#3a2a10}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:20px/1.45 system-ui,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 28px}
+h1{font-size:1.7rem;margin:0}h1 span{font-weight:400;color:var(--mute);font-size:1.1rem;margin-left:8px}
+.ctl{display:flex;align-items:center;gap:10px}.ctl label{color:var(--mute);font-size:.9rem}
+select{font:inherit;font-size:.9rem;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);max-width:420px}
+main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:28px;padding:0 28px 32px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+#photoWrap{position:relative;background:#000;border-radius:16px;overflow:hidden;height:44vh;min-height:240px;display:flex;align-items:center;justify-content:center}
+#photo{max-width:100%;max-height:100%;display:block}
+#ph{position:absolute;color:#cfd8d3;font-size:1.1rem;text-align:center;padding:20px}
+.mute{color:var(--mute);font-size:.9rem;margin:8px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:12px 0}
+.result{display:flex;gap:18px;align-items:center}
+.chip{width:92px;height:92px;border-radius:18px;border:3px solid var(--ink);flex:none;display:flex;align-items:center;justify-content:center;font-size:2.6rem}
+.big{font-size:1.9rem;font-weight:700;margin:0;line-height:1.2}
+.bar{height:12px;background:var(--line);border-radius:6px;overflow:hidden;margin:4px 0 10px}.bar>i{display:block;height:100%;background:var(--accent)}
+.unsure{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:14px;font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+button,.btn{font:inherit;font-size:.95rem;border:0;border-radius:12px;padding:12px 18px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;min-height:48px}
+@media (prefers-color-scheme:dark){button,.btn{color:#08130f}}
+.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+#gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+#gallery button{padding:0;border:3px solid transparent;border-radius:12px;overflow:hidden;aspect-ratio:1;background:#000;position:relative;min-height:0}
+#gallery img{width:100%;height:100%;object-fit:cover;display:block}
+#gallery button.sel{border-color:var(--accent)}
+#gallery span{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.65);color:#fff;border-radius:8px;padding:0 8px;font-size:.8rem}
+.hidden{display:none}
+.hint{color:var(--mute);font-size:.85rem;margin-top:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1>SortRight <span>live demo gallery</span></h1>
+  <div class="ctl"><label for="modelSel">Model</label>
+    <select id="modelSel" aria-label="Choose the model"><option value="sortright">SortRight model (built for this project, 13 MB)</option><option value="mobileclip">MobileCLIP-S0 (general AI model, no recycling training, 38 MB)</option></select></div>
+</header>
+<main>
+  <section>
+    <div id="photoWrap"><img id="photo" alt="Selected demo photo" class="hidden"><div id="ph">Click a photo on the right, or press the arrow keys</div></div>
+    <p id="credit" class="mute"></p>
+    <div id="out" class="card hidden" aria-live="polite"></div>
+    <p id="status" class="mute" aria-live="polite">Loading the model…</p>
+    <div class="row">
+      <button id="prev" class="ghost">&larr; Previous</button>
+      <button id="next">Next &rarr;</button>
+      <label class="btn ghost" style="display:inline-block;text-align:center;line-height:24px">Try your own photo<input id="file" type="file" accept="image/*" hidden></label>
+    </div>
+  </section>
+  <section>
+    <div id="gallery" aria-label="Demo photos"></div>
+    <p class="hint">Hand-picked examples where the model is confident. For the honest overall numbers see the results slides and the model card. Runs on this device: nothing is uploaded.</p>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.min.js"></script>
+<script>
+const ORT_PATH=null;
+const $=s=>document.querySelector(s);
+const MATERIALS=["plastic","paper","cardboard","glass","metal","organic","general_waste","other"];
+const LABEL={plastic:"Plastic",paper:"Paper",cardboard:"Cardboard",glass:"Glass",metal:"Metal",organic:"Food / organic",general_waste:"General waste",other:"Other / special"};
+const REASON={plastic:"Looks like a plastic bottle, cup or container. Empty it first.",paper:"Looks like clean paper. Keep it dry and free of food.",cardboard:"Looks like cardboard. Flatten it; greasy parts do not recycle.",glass:"Looks like glass. Empty and do not break it.",metal:"Looks like a can, tin or foil. Empty it first.",organic:"Looks like food or plant waste.",general_waste:"Looks like mixed or soft packaging, foam or dirty waste.",other:"Looks like something special (battery, cable, clothing). Check the local guide."};
+const ICON={plastic:"\u{1F9F4}",paper:"\u{1F4C4}",cardboard:"\u{1F4E6}",glass:"\u{1F37E}",metal:"\u{1F96B}",organic:"\u{1F34C}",general_waste:"\u{1F5D1}️",other:"⚠️"};
+const DEFAULT_BINS={plastic:{name:"Plastic bin",color:"#E69F00"},paper:{name:"Paper bin",color:"#0072B2"},cardboard:{name:"Cardboard bin",color:"#56B4E9"},glass:{name:"Glass bin",color:"#009E73"},metal:{name:"Metal bin",color:"#F0E442"},organic:{name:"Food waste bin",color:"#8B5A2B"},general_waste:{name:"General waste bin",color:"#7a7a7a"},other:{name:"Ask staff / local guide",color:"#222222"}};
+let bins=JSON.parse(JSON.stringify(DEFAULT_BINS));
+try{const s=localStorage.getItem("bins");if(s)bins={...bins,...JSON.parse(s)}}catch(e){}
+let cfg={threshold:0.6,classes:MATERIALS,mean:[0.485,0.456,0.406],std:[0.229,0.224,0.225],size:224,resize:256,model:"model/sortright.onnx"};
+let session=null,cur="sortright",clipText=null,items=[],idx=-1;const sessions={};
+
+function softmax(a){const m=Math.max(...a),e=a.map(v=>Math.exp(v-m)),s=e.reduce((p,q)=>p+q,0);return e.map(v=>v/s)}
+function cover(img,S,R){const c=document.createElement("canvas");c.width=c.height=S;const x=c.getContext("2d");const k=R/Math.min(img.naturalWidth||img.width,img.naturalHeight||img.height),w=(img.naturalWidth||img.width)*k,h=(img.naturalHeight||img.height)*k;x.drawImage(img,(S-w)/2,(S-h)/2,w,h);return x.getImageData(0,0,S,S).data}
+function prep(img){const S=cfg.size,d=cover(img,S,cfg.resize),t=new Float32Array(3*S*S);for(let i=0;i<S*S;i++)for(let ch=0;ch<3;ch++)t[ch*S*S+i]=(d[i*4+ch]/255-cfg.mean[ch])/cfg.std[ch];return new ort.Tensor("float32",t,[1,3,S,S])}
+function prepClip(img){const S=256,d=cover(img,S,S),t=new Float32Array(3*S*S);for(let i=0;i<S*S;i++)for(let ch=0;ch<3;ch++)t[ch*S*S+i]=d[i*4+ch]/255;return new ort.Tensor("float32",t,[1,3,S,S])}
+async function loadModel(name){
+  if(sessions[name]){session=sessions[name];return}
+  $("#status").textContent="Loading the model…";
+  if(name==="mobileclip"){if(!clipText)clipText=await (await fetch("model/mobileclip_text.json")).json();sessions[name]=await ort.InferenceSession.create("model/mobileclip_s0_vision.onnx",{executionProviders:["wasm"]})}
+  else{sessions[name]=await ort.InferenceSession.create(cfg.model,{executionProviders:["wasm"]})}
+  session=sessions[name]
+}
+async function probs(img){
+  if(cur==="mobileclip"){const out=await session.run({[session.inputNames[0]]:prepClip(img)});let f=Array.from(out[session.outputNames[0]].data);const n=Math.hypot(...f);f=f.map(v=>v/n);return softmax(clipText.text.map(r=>clipText.scale*r.reduce((s,v,i)=>s+v*f[i],0)))}
+  const out=await session.run({[session.inputNames[0]]:prep(img)});return softmax(Array.from(out[session.outputNames[0]].data))
+}
+async function classify(img){
+  if(!session)return;
+  $("#status").textContent="Thinking…";const t0=performance.now();const p=await probs(img);const ms=Math.round(performance.now()-t0);
+  const order=p.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).slice(0,3);const [top,ti]=order[0];const m=cfg.classes[ti];const o=$("#out");o.classList.remove("hidden");
+  const unsure=top<cfg.threshold||m==="other";let html="";
+  if(unsure){html+=`<div class="unsure">I am not sure about this one. Please check your local recycling guide or ask staff.</div><p class="mute">Closest guess: ${LABEL[m]} (${Math.round(top*100)}%)</p>`}
+  else{const b=bins[m];html+=`<div class="result"><div class="chip" style="background:${b.color}" aria-hidden="true">${ICON[m]}</div><div><p class="big">${LABEL[m]} → ${b.name}</p><p class="mute" style="margin:4px 0 0">${REASON[m]}</p></div></div>`}
+  html+="<p class='mute' style='margin-bottom:2px'>Other possibilities</p>"+order.map(([v,i])=>`<div>${LABEL[cfg.classes[i]]} ${Math.round(v*100)}%<div class="bar"><i style="width:${Math.round(v*100)}%"></i></div></div>`).join("")+`<p class="mute">Indicative only. ${ms} ms on this device. Model: ${cur==="mobileclip"?"MobileCLIP-S0 (zero-shot)":"SortRight"}.</p>`;
+  o.innerHTML=html;$("#status").textContent="Done."
+}
+function show(src,credit){
+  const im=$("#photo");$("#ph").classList.add("hidden");im.classList.remove("hidden");$("#out").classList.add("hidden");
+  im.onload=()=>classify(im);im.src=src;$("#credit").textContent=credit||""
+}
+function pick(i){
+  if(!items.length)return;idx=(i+items.length)%items.length;const it=items[idx];
+  document.querySelectorAll("#gallery button").forEach((b,k)=>b.classList.toggle("sel",k===idx));
+  show("demo_images/"+it.file,`Photo: ${it.title} · ${it.author} · ${it.licence} · via Wikimedia Commons`)
+}
+$("#prev").onclick=()=>pick(idx-1);$("#next").onclick=()=>pick(idx+1);
+document.addEventListener("keydown",e=>{if(e.target.tagName==="SELECT")return;if(e.key==="ArrowRight")pick(idx+1);else if(e.key==="ArrowLeft")pick(idx-1);else if(/^[1-9]$/.test(e.key))pick(+e.key-1)});
+$("#file").onchange=e=>{const f=e.target.files[0];if(!f)return;idx=-1;document.querySelectorAll("#gallery button").forEach(b=>b.classList.remove("sel"));show(URL.createObjectURL(f),"Your own photo (stays on this device)");e.target.value=""};
+$("#modelSel").onchange=async e=>{
+  const want=e.target.value;$("#out").classList.add("hidden");cur=want;
+  try{await loadModel(want);$("#status").textContent="Ready. Click a photo."}
+  catch(err){if(want!=="sortright"){cur="sortright";e.target.value="sortright";delete sessions[want];try{await loadModel("sortright");$("#status").textContent="MobileCLIP could not load on this device ("+err.message+"). Using the SortRight model instead."}catch(e2){$("#status").textContent="Could not load the model: "+e2.message}}else{$("#status").textContent="Could not load the model: "+err.message}}
+};
+async function init(){
+  try{cfg={...cfg,...await (await fetch("model/config.json")).json()}}catch(e){}
+  try{items=await (await fetch("demo_images/credits.json")).json()}catch(e){}
+  const g=$("#gallery");items.forEach((it,k)=>{const b=document.createElement("button");b.setAttribute("aria-label","Demo photo "+(k+1)+": "+it.title);const im=document.createElement("img");im.src="demo_images/"+it.file;im.alt="";const n=document.createElement("span");n.textContent=k+1;b.append(im,n);b.onclick=()=>pick(k);g.appendChild(b)});
+  try{if(ORT_PATH)ort.env.wasm.wasmPaths=ORT_PATH;ort.env.wasm.numThreads=1;await loadModel("sortright");$("#status").textContent="Ready. Click a photo.";const q=new URLSearchParams(location.search).get("i");if(q)pick(+q-1)}catch(e){$("#status").textContent="Could not load the model: "+e.message}
+}
+init();
+</script>
+</body>
+</html>

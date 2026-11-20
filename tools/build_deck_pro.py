@@ -1,6 +1,6 @@
 ﻿"""Build the final presentation deck (12 slides) with speaker notes (python-pptx).
 Numbers come from results/*.json and results/summary.md (same sources as the report); images from deck_assets/.
-usage: python tools/build_deck_pro.py  -> SortRight_Final_Presentation_PRO_v3.pptx"""
+usage: python tools/build_deck_pro.py  -> SortRight_Final_Presentation_PRO_v4.pptx"""
 from pathlib import Path
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -559,7 +559,7 @@ NL = chr(10)
 parts = ["# SortRight: simple speaking script"] + [f"## Slide {i}{NL}{NOTES[i]}" for i in range(1, 14)]
 open(ROOT / "SPEAKING_SCRIPT_SIMPLE.md", "w", encoding="utf-8").write((NL + NL).join(parts) + NL)
 
-out = ROOT / "SortRight_Final_Presentation_PRO_v3.pptx"
+out = ROOT / "SortRight_Final_Presentation_PRO_v4.pptx"
 prs.save(out)
 print("saved", out)
 
