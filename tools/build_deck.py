@@ -11,6 +11,8 @@ R = ROOT / "results"
 CLS = ["plastic", "paper", "cardboard", "glass", "metal", "organic", "general_waste", "other"]
 res = {}
 for f in glob.glob(str(R / "*_s*.json")):
+    if Path(f).name.startswith("everyday_"):
+        continue
     d = json.load(open(f))
     res.setdefault(d["arm"].replace("clip_zeroshot", "clip"), []).append(d)
 
@@ -158,13 +160,15 @@ bullets(s, [f"Real in-the-wild data is the biggest lever: A {m('A', 'acc'):.2f} 
 s = slide("Error analysis (deployed model)", "Transparent glass vs plastic, crumpled foil and film vs general waste")
 pic(s, R / "failures_G.jpg", 0.5, 1.7, h=5.5)
 pic(s, R / "confusion_best.png", 6.9, 1.7, w=4.3)
-bullets(s, ["Glass is the weakest class: clear bottles look like plastic",
-            "Some labels are genuinely ambiguous"], x=6.9, y=5.5, w=6.0, h=1.8, size=16)
+bullets(s, ["Litter photos: glass and paper weakest (clear bottles look like plastic)",
+            "Second test, 191 everyday product photos: 1 in 4 cardboard items called paper (a printed pizza box: 'paper 87%'); general waste mostly wrong",
+            "Retraining with 97 of those images (arm H) changed little: 0.63 -> 0.68 on the held-out half, within noise"], x=6.9, y=5.4, w=6.0, h=2.0, size=14)
 
 # 9 deployment
 s = slide("Deployment and 'not sure'", "Static site on GitHub Pages, model runs on the phone")
 pic(s, R / "app_screenshot.jpg", 0.7, 1.7, h=5.4)
-bullets(s, ["Model 13 MB, about 0.2 s per photo on a laptop browser; works offline after first load; nothing is uploaded",
+bullets(s, ["Model 13 MB, under 0.2 s per photo in the browser; nothing is uploaded",
+            "Live: isaacjamesmoses.github.io/sortright",
             "Threshold 0.6 chosen on real-photo validation images (never on the test set)",
             "On the 150 real-world photos: about half are answered, at roughly 80% accuracy; the rest say 'not sure'",
             "Settings page maps materials to local bin names and colours; help page lists limits",

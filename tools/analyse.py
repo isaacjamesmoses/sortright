@@ -11,7 +11,7 @@ CLS = ["plastic", "paper", "cardboard", "glass", "metal", "organic", "general_wa
 NAMES = {"probe": "Baseline: frozen backbone + linear probe (TrashNet)", "clip": "CLIP zero-shot (comparison)",
          "A": "A. Fine-tuned, TrashNet only", "B": "B. + strong classic augmentation",
          "C": "C. + synthetic composites", "D": "D. + composites + generated organic/other",
-         "E": "E. + real TACO training crops", "F": "F. All data (real + composites + synthetic classes)", "G": "G. Real + more generated organic/other (no composites)"}
+         "E": "E. + real TACO training crops", "F": "F. All data (real + composites + synthetic classes)", "G": "G. Real + more generated organic/other (no composites)", "H": "H. G + everyday-item training images (x4)"}
 
 
 def wilson(k, n, z=1.96):
@@ -25,6 +25,8 @@ def wilson(k, n, z=1.96):
 def load():
     out = {}
     for f in sorted(glob.glob(str(R / "*_s*.json"))):
+        if Path(f).name.startswith("everyday_"):
+            continue
         d = json.load(open(f))
         a = d["arm"].replace("clip_zeroshot", "clip")
         out.setdefault(a, []).append(d)
@@ -51,7 +53,7 @@ def threshold_table(arm, seed):
 res = load()
 lines = ["# SortRight results (real-world test set n=150; TrashNet test n=251)", "",
          "| Arm | Train images | Real-world accuracy (95% CI) | Real-world macro-F1 | TrashNet accuracy | Seeds |", "|---|---|---|---|---|---|"]
-order = ["probe", "clip", "A", "B", "C", "D", "E", "F", "G"]
+order = ["probe", "clip", "A", "B", "C", "D", "E", "F", "G", "H"]
 for a in order:
     if a not in res:
         continue

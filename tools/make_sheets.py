@@ -2,7 +2,7 @@ import cv2, json, random, sys, numpy as np
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 C = ROOT/"data"/(sys.argv[3] if len(sys.argv)>3 else "web_test_candidates"); OUT = ROOT/"data"/"review_sheets"; OUT.mkdir(exist_ok=True, parents=True)
-cls, n = sys.argv[1], int(sys.argv[2]); pref = "T_" if len(sys.argv)>3 else ""
+cls, n = sys.argv[1], int(sys.argv[2]); pref = (sys.argv[4] if len(sys.argv)>4 else "T_") if len(sys.argv)>3 else ""
 face = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml") if hasattr(cv2, "CascadeClassifier") else None
 files = sorted((C/cls).glob("*.jpg"))
 if len(sys.argv) <= 3: random.Random(1).shuffle(files)

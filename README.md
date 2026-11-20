@@ -2,7 +2,7 @@
 
 A phone web app that looks at one item and suggests the material and the recycling bin, or says "I am not sure". The model runs inside the browser (ONNX Runtime Web): no upload, no account, no payment. Coursework project for MAIB AI 221 Computer Vision with Applications (S P Jain School of Global Management), Final Group Project 8 (Environment).
 
-**Live app:** `https://<your-github-username>.github.io/sortright/`  (see "Deploy" below)
+**Live app:** https://isaacjamesmoses.github.io/sortright/  (see "Deploy" below)
 
 ## What it does
 - Take a photo or choose one; get the material, the bin name and colour, and a one-line reason.

@@ -11,6 +11,7 @@
 | E. + real TACO training crops | 2551 | 0.630 ±0.017 sd (0.55-0.70) | 0.552 | 0.926 | 2 |
 | F. All data (real + composites + synthetic classes) | 4732 | 0.583 ±0.003 sd (0.50-0.66) | 0.551 | 0.926 | 2 |
 | G. Real + more generated organic/other (no composites) | 3847 | 0.657 ±0.017 sd (0.58-0.73) | 0.633 | 0.916 | 2 |
+| H. G + everyday-item training images (x4) | 4235 | 0.657 ±0.003 sd (0.58-0.73) | 0.634 | 0.910 | 2 |
 
 ## Per-class recall on the real-world test set (mean over seeds)
 
@@ -25,6 +26,7 @@
 | E. + real TACO training crops | 0.71 | 0.47 | 0.97 | 0.25 | 0.88 | 0.00 | 0.70 | 0.50 |
 | F. All data (real + composites + synthetic classes) | 0.64 | 0.47 | 0.78 | 0.29 | 0.83 | 0.23 | 0.57 | 0.50 |
 | G. Real + more generated organic/other (no composites) | 0.71 | 0.33 | 0.88 | 0.39 | 0.88 | 0.77 | 0.55 | 0.50 |
+| H. G + everyday-item training images (x4) | 0.71 | 0.23 | 0.82 | 0.39 | 0.81 | 0.88 | 0.64 | 0.50 |
 
 ## 'Not sure' threshold on the real-world set, best arm by macro-F1 = G
 

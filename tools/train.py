@@ -68,11 +68,20 @@ def arm_items(arm):
     syn = folder(ROOT / "data/synth/classes") if (ROOT / "data/synth/classes").exists() else []
     tc = taco(S["taco_train"])
     plus = folder(ROOT / "data/synth/classes_plus") if (ROOT / "data/synth/classes_plus").exists() else []
-    return {"G": A + tc + syn + plus, "A": A, "B": A, "C": A + comp, "D": A + comp + syn, "E": A + tc, "F": A + tc + comp + syn}[arm]
+    return {"G": A + tc + syn + plus, "H": A + tc + syn + plus + everyday("train") * 4, "A": A, "B": A, "C": A + comp, "D": A + comp + syn,
+            "E": A + tc, "F": A + tc + comp + syn}[arm]
+
+
+def everyday(split):
+    """Second real-world set (tools/collect_everyday.py + manual review): split is 'train' or 'test' (held out)."""
+    f = ROOT / "data/everyday_set/labels.csv"
+    if not f.exists():
+        return []
+    return [(ROOT / "data/everyday_set" / r["file"], CI[r["label"]]) for r in csv.DictReader(open(f, encoding="utf-8")) if r["split"] == split]
 
 
 def val_items(arm):
-    return tn(S["trashnet_val"]) + (taco(S["taco_val"]) if arm in ("E", "F", "G") else [])
+    return tn(S["trashnet_val"]) + (taco(S["taco_val"]) if arm in ("E", "F", "G", "H") else [])
 
 
 dev = "cuda"
@@ -149,7 +158,14 @@ def run(arm, seed, epochs1=3, epochs2=7):
     Pv = predict(m, vi)
     res = dict(arm=arm, seed=seed, n_train=len(items), real=metrics(Pr, yr, list(range(8))),
                trashnet=metrics(Pt, yt, [0, 1, 2, 3, 4, 6]))
-    np.savez(ROOT / f"results/probs_{arm}_s{seed}.npz", real=Pr, yr=yr, tn=Pt, yt=yt, val=Pv, yv=yv)
+    ev = everyday("test")
+    if ev:
+        ye = np.array([y for _, y in ev])
+        Pe = predict(m, ev)
+        res["everyday"] = metrics(Pe, ye, sorted(set(ye.tolist())))
+        np.savez(ROOT / f"results/probs_{arm}_s{seed}.npz", real=Pr, yr=yr, tn=Pt, yt=yt, val=Pv, yv=yv, ev=Pe, ye=ye)
+    else:
+        np.savez(ROOT / f"results/probs_{arm}_s{seed}.npz", real=Pr, yr=yr, tn=Pt, yt=yt, val=Pv, yv=yv)
     json.dump(res, open(ROOT / f"results/{arm}_s{seed}.json", "w"), indent=1)
     torch.save(m.state_dict(), ROOT / f"models/{arm}_s{seed}.pt")
     print(f"RESULT {arm} s{seed} n={len(items)} real acc {res['real']['acc']:.3f} f1 {res['real']['macro_f1']:.3f}"
