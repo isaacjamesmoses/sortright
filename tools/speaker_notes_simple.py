@@ -44,22 +44,27 @@ I also tried pasting items on generated backgrounds. It did not help, so I did n
 Metal and cardboard are best. Paper and glass are hardest.
 
 The right chart is important. When the app answers, it is right about 82 percent of the time. When it is not sure, it tells the user to check the local guide.""",
-9: """These are the main mistakes.
+9: """I added a second model option in the app. It is MobileCLIP-S0, a small model from Apple that is tested on the ImageNet benchmark. It has no recycling training at all.
+
+On my 150 real photos it scores 70 percent. On the 191 everyday photos it scores 76 percent. My own model scores 66 and 64.
+
+So the general model is more accurate here, but it is bigger and slower. My model is small and fast. In the app, the user can choose either one.""",
+10: """These are the main mistakes.
 
 Clear glass looks like plastic. Shiny foil gets confused. Colourful cardboard can look like paper.
 
 This tells me which photos to add next.""",
-10: """I also tested some fixes.
+11: """I also tested some fixes.
 
 On 191 new photos the score was 64 percent, so the result is stable. Averaging two models did not help. Removing the background made it worse. More photos helped a little.
 
 So the next step is more real photos taken at bins.""",
-11: """The app is a simple website on GitHub Pages. It is free and always on.
+12: """The app is a simple website on GitHub Pages. It is free and always on.
 
 Privacy: nothing leaves the phone. Every answer says it is only a guide.
 
 Users can change bin names and colours, because rules differ by city. The colours are safe for colour-blind users.""",
-12: """To finish. I trained a model, compared it with two references, used generated images, tested it carefully, and deployed a live app.
+13: """To finish. I trained a model, compared it with two references, used generated images, tested it carefully, and deployed a live app.
 
 Please scan the QR code and try it.
 

@@ -1,6 +1,6 @@
 ﻿"""Build the final presentation deck (12 slides) with speaker notes (python-pptx).
 Numbers come from results/*.json and results/summary.md (same sources as the report); images from deck_assets/.
-usage: python tools/build_deck_pro.py  -> SortRight_Final_Presentation_PRO_v2.pptx"""
+usage: python tools/build_deck_pro.py  -> SortRight_Final_Presentation_PRO_v3.pptx"""
 from pathlib import Path
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -29,7 +29,7 @@ BIN_NAMES = ["Plastic", "Paper", "Cardboard", "Glass", "Metal", "Food", "General
 prs = Presentation()
 prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
 BLANK = prs.slide_layouts[6]
-TOTAL = 12
+TOTAL = 13
 
 
 def text(s, x, y, w, h, paras, size=16, color=INK, bold=False, font=BODY, align=PP_ALIGN.LEFT,
@@ -410,8 +410,34 @@ ch.plots[0].overlap = -5
 color_series(ch.plots[0].series[0], TINT)
 color_series(ch.plots[0].series[1], GREEN)
 
+# ---------------------------------------------------------------- 9 model comparison
+s = new_slide(9, "Two models in one app", "A specialist and a foundation model, same photos, same test. Pick one on the Scan tab.", notes="")
+text(s, 0.6, 1.75, 7.3, 0.35, "Accuracy on two held-out test sets", size=17, bold=True, font=HEAD)
+cd = CategoryChartData()
+cd.categories = ["SortRight (ours, trained)", "MobileCLIP-S0 (zero-shot)", "CLIP ViT-B/32 (reference)"]
+cd.add_series("150 real-world photos", [0.66, 0.70, 0.58])
+cd.add_series("191 everyday photos", [0.64, 0.76, 0.74])
+gf = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(0.6), Inches(2.15), Inches(7.3), Inches(4.7), cd)
+ch = gf.chart
+style_chart(ch, legend=True, size=12)
+ch.value_axis.maximum_scale = 1.0
+labels(ch.plots[0], "0.00")
+ch.plots[0].gap_width = 60
+ch.plots[0].overlap = -5
+color_series(ch.plots[0].series[0], TINT)
+color_series(ch.plots[0].series[1], GREEN)
+cards = [("SortRight", "13 MB · about 40 ms", "Fine-tuned for this task on 3,847 images. Small, fast, and the default.", MINT, GREEN, INK),
+         ("MobileCLIP-S0", "38 MB · about 280 ms", "Apple’s small vision-language model: 11.4M-parameter image encoder, 67.8% zero-shot on ImageNet. No recycling training.", DARK, AMBER, WHITE)]
+for i, (h, big, d, fill, bc, tc) in enumerate(cards):
+    y = 1.75 + i * 2.6
+    box(s, 8.25, y, 4.48, 2.4, fill)
+    text(s, 8.5, y + 0.15, 4.0, 0.35, h, size=17, bold=True, font=HEAD, color=bc)
+    text(s, 8.5, y + 0.55, 4.0, 0.6, big, size=24, bold=True, font=HEAD, color=tc)
+    text(s, 8.5, y + 1.25, 4.0, 1.1, d, size=14, color=tc, line=1.0)
+text(s, 8.25, 6.95 - 0.05, 4.48, 0.1, "", size=10)
+
 # ---------------------------------------------------------------- 9 error analysis
-s = new_slide(9, "Error analysis: where and why it hesitates", "The mistakes are physical, which tells us exactly what data to add.", notes=(
+s = new_slide(10, "Error analysis: where and why it hesitates", "The mistakes are physical, which tells us exactly what data to add.", notes=(
     "[~50 s] Error analysis. The confusion matrix on the left shows the mistakes. The main ones are physical: clear or "
     "brown glass bottles lying in grass look like plastic; crumpled foil and film look like each other; and printed or "
     "coloured cardboard, like a cereal box, resembles paper. The examples on the right are the most confident mistakes. "
@@ -430,7 +456,7 @@ for i, (h, d) in enumerate([("Glass ↔ plastic", "Clear and brown bottles in gr
     text(s, x + 0.18, 5.15, 1.72, 1.6, d, size=14, color=MUTE, line=1.05)
 
 # ---------------------------------------------------------------- 10 stress tests
-s = new_slide(10, "We stress-tested the obvious fixes", "Each change was measured on held-out photos before deciding what to ship.", notes=(
+s = new_slide(11, "We stress-tested the obvious fixes", "Each change was measured on held-out photos before deciding what to ship.", notes=(
     "[~45 s] I did not stop at the first model. First, an independent test: 191 everyday photos from Wikimedia Commons "
     "that the model had never seen scored 0.64 against 0.66, so the result holds across two unseen sets. Second, I tried "
     "averaging two trained models: no meaningful gain for a download twice the size, so I did not ship it. Third, "
@@ -454,7 +480,7 @@ text(s, 0.9, 6.05, 11.6, 0.85, [[("Next:  ", {"bold": True, "color": AMBER}),
      size=15, anchor=MSO_ANCHOR.MIDDLE)
 
 # ---------------------------------------------------------------- 11 deployment + responsible AI
-s = new_slide(11, "Built to ship, built to be trusted", notes=(
+s = new_slide(12, "Built to ship, built to be trusted", notes=(
     "[~50 s] Deployment and responsible AI. The brief asks for a working public URL and a phone-friendly app: this is a "
     "static site on GitHub Pages using ONNX Runtime Web. One lesson from Lecture D: static int8 quantisation of the whole "
     "network collapsed accuracy from 0.65 to 0.39, so I quantised only the classifier head and got 13.1 megabytes with "
@@ -483,7 +509,7 @@ for i, c in enumerate(BIN):
 text(s, 7.08, 6.45, 5.4, 0.3, "The default bin palette, shown as in the app", size=11, color=MUTE)
 
 # ---------------------------------------------------------------- 12 closing
-s = new_slide(12, dark=True, notes=(
+s = new_slide(13, dark=True, notes=(
     "[~30 s] To close: what was asked and what was delivered. A transfer-learning classifier exported to ONNX under 15 "
     "megabytes; CLIP zero-shot as a comparison; a generative AI experiment with a measured effect; a complete evaluation, "
     "real photos versus TrashNet, fine-tuned versus zero-shot, with and without composites, the not-sure trade-off and the "
@@ -530,11 +556,12 @@ from speaker_notes_simple import NOTES
 for i, sl in enumerate(prs.slides, 1):
     sl.notes_slide.notes_text_frame.text = NOTES[i]
 NL = chr(10)
-parts = ["# SortRight: simple speaking script"] + [f"## Slide {i}{NL}{NOTES[i]}" for i in range(1, 13)]
+parts = ["# SortRight: simple speaking script"] + [f"## Slide {i}{NL}{NOTES[i]}" for i in range(1, 14)]
 open(ROOT / "SPEAKING_SCRIPT_SIMPLE.md", "w", encoding="utf-8").write((NL + NL).join(parts) + NL)
 
-out = ROOT / "SortRight_Final_Presentation_PRO_v2.pptx"
+out = ROOT / "SortRight_Final_Presentation_PRO_v3.pptx"
 prs.save(out)
 print("saved", out)
+
 
 

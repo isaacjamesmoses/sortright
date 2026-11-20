@@ -24,6 +24,7 @@ canvas,video{width:100%;border-radius:12px;background:#000;display:block}
 nav{display:flex;gap:6px}nav button{padding:8px 12px;min-height:44px;font-size:.95rem}
 table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;border-bottom:1px solid var(--line)}input[type=color]{width:56px;height:44px;border:0;background:none}
 input[type=text]{font:inherit;width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+select{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);min-height:48px;margin-bottom:8px}
 .hidden{display:none}details summary{cursor:pointer;font-weight:600}
 </style>
 </head>
@@ -34,6 +35,8 @@ input[type=text]{font:inherit;width:100%;padding:8px;border:1px solid var(--line
 <section id="scan">
   <div class="card">
     <p class="mute" style="margin-top:0">Point at one item. Your photo stays on this phone; nothing is uploaded.</p>
+    <label class="mute" for="modelSel" style="display:block;margin:6px 0 4px">Model</label>
+    <select id="modelSel" aria-label="Choose the model"><option value="sortright">SortRight model (built for this project, 13 MB)</option><option value="mobileclip">MobileCLIP-S0 (general AI model, no recycling training, 38 MB)</option></select>
     <video id="video" playsinline muted class="hidden"></video>
     <canvas id="canvas" class="hidden"></canvas>
     <div class="row" style="margin-top:10px">
@@ -57,7 +60,7 @@ input[type=text]{font:inherit;width:100%;padding:8px;border:1px solid var(--line
     <p><b>When it says "not sure"</b>, do not guess. Check your local recycling guide or ask staff. It is built to say so when the photo is unclear, the item is dirty or mixed, or it is not a type it knows.</p>
     <p><b>Tips:</b> one item per photo, item in the middle, good light, close enough to fill about half the picture.</p>
     <details><summary>Limits</summary><p class="mute">This is an indicative assistant, not an official rule. Dirty or greasy items, mixed materials, clear plastic film, cartons and electronics are often misjudged. Rules differ by city: edit the bin names on the Bins tab.</p></details>
-    <details><summary>About the model</summary><p class="mute" id="about"></p></details>
+    <details><summary>About the models</summary><p class="mute">You can switch between two models on the Scan tab. SortRight is trained for this project (13 MB). MobileCLIP-S0 is a small general-purpose vision-language model from Apple (38 MB) that works without any recycling training. Both run on your phone.</p><p class="mute" id="about"></p></details>
   </div>
 </section>
 </main>
@@ -78,17 +81,23 @@ function renderBins(){const t=$("#binTable");t.innerHTML="<tr><th>Material</th><
 $("#resetBins").onclick=()=>{bins=JSON.parse(JSON.stringify(DEFAULT_BINS));save();renderBins()};
 async function init(){try{cfg={...cfg,...await (await fetch("model/config.json")).json()}}catch(e){}
  $("#about").textContent=cfg.about||"";
- try{ort.env.wasm.numThreads=1;session=await ort.InferenceSession.create(cfg.model,{executionProviders:["wasm"]});$("#status").textContent="Ready. Take or choose a photo.";}catch(e){$("#status").textContent="Could not load the model: "+e.message}}
+ try{ort.env.wasm.numThreads=1;$("#modelSel").value=cur;await loadModel(cur);$("#status").textContent="Ready. Take or choose a photo.";}catch(e){$("#status").textContent="Could not load the model: "+e.message}}
+let cur="sortright";try{if(localStorage.getItem("model")==="mobileclip")cur="mobileclip"}catch(e){}
+const sessions={};let clipText=null;
+async function loadModel(name){if(sessions[name]){session=sessions[name];return}$("#status").textContent="Loading the model…";if(name==="mobileclip"){if(!clipText)clipText=await (await fetch("model/mobileclip_text.json")).json();sessions[name]=await ort.InferenceSession.create("model/mobileclip_s0_vision.onnx",{executionProviders:["wasm"]})}else{sessions[name]=await ort.InferenceSession.create(cfg.model,{executionProviders:["wasm"]})}session=sessions[name]}
+function prepClip(img){const S=256,c=document.createElement("canvas");c.width=c.height=S;const x=c.getContext("2d");const k=S/Math.min(img.width,img.height),w=img.width*k,h=img.height*k;x.drawImage(img,(S-w)/2,(S-h)/2,w,h);const d=x.getImageData(0,0,S,S).data,t=new Float32Array(3*S*S);for(let i=0;i<S*S;i++)for(let ch=0;ch<3;ch++)t[ch*S*S+i]=d[i*4+ch]/255;return new ort.Tensor("float32",t,[1,3,S,S])}
+async function probs(img){if(cur==="mobileclip"){const out=await session.run({[session.inputNames[0]]:prepClip(img)});let f=Array.from(out[session.outputNames[0]].data);const n=Math.hypot(...f);f=f.map(v=>v/n);return softmax(clipText.text.map(r=>clipText.scale*r.reduce((s,v,i)=>s+v*f[i],0)))}const out=await session.run({[session.inputNames[0]]:prep(img)});return softmax(Array.from(out[session.outputNames[0]].data))}
+$("#modelSel").onchange=async e=>{cur=e.target.value;try{localStorage.setItem("model",cur)}catch(_){}$("#out").classList.add("hidden");try{await loadModel(cur);$("#status").textContent="Ready. Take or choose a photo."}catch(err){$("#status").textContent="Could not load the model: "+err.message}};
 function prep(img){const S=cfg.size,R=cfg.resize,c=document.createElement("canvas");c.width=c.height=S;const x=c.getContext("2d");const k=R/Math.min(img.width,img.height),w=img.width*k,h=img.height*k;x.drawImage(img,(S-w)/2,(S-h)/2,w,h);const d=x.getImageData(0,0,S,S).data,t=new Float32Array(3*S*S);for(let i=0;i<S*S;i++)for(let ch=0;ch<3;ch++)t[ch*S*S+i]=(d[i*4+ch]/255-cfg.mean[ch])/cfg.std[ch];return new ort.Tensor("float32",t,[1,3,S,S])}
 function softmax(a){const m=Math.max(...a),e=a.map(v=>Math.exp(v-m)),s=e.reduce((p,q)=>p+q,0);return e.map(v=>v/s)}
 async function classify(img){if(!session)return;const cv=$("#canvas");cv.width=Math.min(img.width,640);cv.height=cv.width*img.height/img.width;cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);cv.classList.remove("hidden");
- $("#status").textContent="Thinking…";const t0=performance.now();const out=await session.run({[session.inputNames[0]]:prep(img)});const p=softmax(Array.from(out[session.outputNames[0]].data));const ms=Math.round(performance.now()-t0);
+ $("#status").textContent="Thinking…";const t0=performance.now();const p=await probs(img);const ms=Math.round(performance.now()-t0);
  const order=p.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).slice(0,3);const [top,ti]=order[0];const m=cfg.classes[ti];const o=$("#out");o.classList.remove("hidden");
  const unsure=top<cfg.threshold||m==="other";
  let html="";
  if(unsure){html+=`<div class="unsure">I am not sure about this one. Please check your local recycling guide or ask staff.</div><p class="mute">Closest guess: ${LABEL[m]} (${Math.round(top*100)}%)</p>`}
  else{const b=bins[m];html+=`<div class="result"><div class="chip" style="background:${b.color}" aria-hidden="true">${ICON[m]}</div><div><p class="big">${LABEL[m]} → ${b.name}</p><p class="mute" style="margin:0">${REASON[m]}</p></div></div>`}
- html+="<p class='mute' style='margin-bottom:2px'>Other possibilities</p>"+order.map(([v,i])=>`<div>${LABEL[cfg.classes[i]]} ${Math.round(v*100)}%<div class="bar"><i style="width:${Math.round(v*100)}%"></i></div></div>`).join("")+`<p class="mute">Indicative only. Rules differ by city. ${ms} ms on this device.</p>`;o.innerHTML=html;$("#status").textContent="Done."}
+ html+="<p class='mute' style='margin-bottom:2px'>Other possibilities</p>"+order.map(([v,i])=>`<div>${LABEL[cfg.classes[i]]} ${Math.round(v*100)}%<div class="bar"><i style="width:${Math.round(v*100)}%"></i></div></div>`).join("")+`<p class="mute">Indicative only. Rules differ by city. ${ms} ms on this device. Model: ${cur==="mobileclip"?"MobileCLIP-S0 (zero-shot)":"SortRight"}.</p>`;o.innerHTML=html;$("#status").textContent="Done."}
 function fromFile(f){const im=new Image();im.onload=()=>{classify(im);URL.revokeObjectURL(im.src)};im.src=URL.createObjectURL(f)}
 $("#file").onchange=e=>{if(e.target.files[0])fromFile(e.target.files[0]);e.target.value=""};
 $("#file2").onchange=e=>{if(e.target.files[0])fromFile(e.target.files[0]);e.target.value=""};

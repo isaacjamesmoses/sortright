@@ -14,3 +14,6 @@ SortRight is a student coursework project (MAIB AI 221, S P Jain School of Globa
 | Ultralytics YOLO models | not used in the deployed model | (AGPL-3.0; course backbone only for the Week 7 exercises) |
 
 Generated images are synthetic and are labelled as such in this repository (`data/synth/`). They contain no real people or personal data.
+
+## MobileCLIP-S0 (optional second model in the app)
+Apple MobileCLIP-S0 image encoder, ONNX int8 conversion by Xenova (https://huggingface.co/Xenova/mobileclip_s0), used as supplied under the Apple software licence in `docs/model/MOBILECLIP_LICENSE.txt` (copy retained as required). Source: https://github.com/apple/ml-mobileclip. Used here for education and research; no recycling-specific training of this model.

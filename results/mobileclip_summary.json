@@ -1,0 +1,46 @@
+{
+ "model": "MobileCLIP-S0 (Apple), int8 ONNX image encoder",
+ "image_encoder_params_M": 11.4,
+ "file_MB": 37.8,
+ "mode": "zero-shot, fixed text prompts, nothing trained on our data",
+ "real150": {
+  "zero_shot": {
+   "acc": 0.7,
+   "macro_f1": 0.7124448698689879,
+   "recall": {
+    "plastic": 0.5714285714285714,
+    "paper": 0.6666666666666666,
+    "cardboard": 0.9,
+    "glass": 0.5714285714285714,
+    "metal": 0.625,
+    "organic": 0.8461538461538461,
+    "general_waste": 0.7857142857142857,
+    "other": 0.625
+   },
+   "answered_at_0_6": 0.7333333333333333,
+   "acc_on_answered": 0.7909090909090909,
+   "n": 150
+  },
+  "ms_per_image_cpu": 29.8725159962972
+ },
+ "everyday191": {
+  "zero_shot": {
+   "acc": 0.7591623036649214,
+   "macro_f1": 0.7438134889213954,
+   "recall": {
+    "plastic": 0.84,
+    "paper": 0.6666666666666666,
+    "cardboard": 0.875,
+    "glass": 0.90625,
+    "metal": 0.7647058823529411,
+    "organic": 0.9411764705882353,
+    "general_waste": 0.5555555555555556,
+    "other": 0.5
+   },
+   "answered_at_0_6": 0.8272251308900523,
+   "acc_on_answered": 0.8354430379746836,
+   "n": 191
+  },
+  "ms_per_image_cpu": 35.26886845134316
+ }
+}
